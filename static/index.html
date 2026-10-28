@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YT Transcript</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b0c10; --panel: #13151b; --panel-2: #1a1d25; --line: #262a35;
+  --text: #e8eaf0; --muted: #8a90a2; --accent: #ff4d5e; --accent-2: #ff8a4c;
+  --hl: rgba(255, 196, 0, .35); --active: rgba(255, 77, 94, .12);
+  --radius: 14px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; }
+body { min-height: 100vh; }
+a { color: inherit; }
+button, input, select { font: inherit; color: inherit; }
+
+/* ---------- hero ---------- */
+.hero { max-width: 760px; margin: 0 auto; padding: 72px 20px 32px; text-align: center; transition: padding .3s; }
+.has-data .hero { padding: 24px 20px 16px; max-width: 1280px; text-align: left; display: flex; gap: 20px; align-items: center; }
+.logo { font-weight: 700; font-size: 44px; letter-spacing: -1.5px; margin: 0 0 8px; }
+.logo span { background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.has-data .logo { font-size: 22px; margin: 0; white-space: nowrap; }
+.tag { color: var(--muted); margin: 0 0 28px; }
+.has-data .tag { display: none; }
+
+.search { display: flex; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 6px; flex: 1;
+  box-shadow: 0 10px 40px -10px rgba(255, 77, 94, .25); }
+.search input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; padding: 10px 16px; font-size: 16px; }
+.btn { border: 0; border-radius: 999px; padding: 10px 20px; cursor: pointer; font-weight: 600; background: var(--panel-2); transition: transform .1s, background .2s; }
+.btn:hover { background: #232733; }
+.btn:active { transform: scale(.97); }
+.btn.primary { background: linear-gradient(90deg, var(--accent), var(--accent-2)); color: #fff; }
+.btn.primary:disabled { opacity: .6; cursor: wait; }
+.btn.small { padding: 7px 12px; font-size: 13px; font-weight: 500; border-radius: 10px; }
+
+.error { max-width: 760px; margin: 0 auto 20px; padding: 12px 16px; border-radius: 12px; background: rgba(255,77,94,.1); border: 1px solid rgba(255,77,94,.35); color: #ffb3ba; display: none; }
+.hint { color: var(--muted); font-size: 13px; margin-top: 14px; }
+
+/* ---------- layout ---------- */
+.main { display: none; max-width: 1280px; margin: 0 auto; padding: 0 20px 40px; gap: 20px; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
+.has-data .main { display: grid; }
+@media (max-width: 900px) { .has-data .main { grid-template-columns: 1fr; } .has-data .hero { flex-direction: column; align-items: stretch; } }
+
+.side { position: sticky; top: 16px; align-self: start; display: flex; flex-direction: column; gap: 14px; }
+.player { aspect-ratio: 16/9; width: 100%; border-radius: var(--radius); overflow: hidden; background: #000; border: 1px solid var(--line); }
+.player iframe, .player > div { width: 100%; height: 100%; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stat b { display: block; font-size: 20px; }
+.stat small { color: var(--muted); font-size: 12px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+label.lbl { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; }
+select { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; width: 100%; outline: 0; }
+.selects { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+
+/* ---------- transcript ---------- */
+.tpanel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; height: calc(100vh - 110px); min-height: 500px; }
+.toolbar { padding: 12px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.find { flex: 1; min-width: 180px; display: flex; align-items: center; gap: 8px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 0 10px; }
+.find input { flex: 1; background: none; border: 0; outline: 0; padding: 8px 0; }
+.find small { color: var(--muted); white-space: nowrap; }
+.seg { display: flex; background: var(--panel-2); border-radius: 10px; padding: 3px; border: 1px solid var(--line); }
+.seg button { background: none; border: 0; padding: 5px 10px; border-radius: 7px; cursor: pointer; font-size: 13px; color: var(--muted); }
+.seg button.on { background: #2a2f3c; color: var(--text); }
+.toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; user-select: none; }
+
+.list { overflow-y: auto; padding: 8px; flex: 1; scroll-behavior: smooth; }
+.item { display: flex; gap: 12px; padding: 8px 10px; border-radius: 10px; cursor: pointer; line-height: 1.6; transition: background .15s; }
+.item:hover { background: var(--panel-2); }
+.item.active { background: var(--active); box-shadow: inset 3px 0 0 var(--accent); }
+.ts { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--accent-2); padding-top: 3px; min-width: 52px; }
+.no-ts .ts { display: none; }
+.para .item { padding: 12px 14px; }
+.para .item + .item { margin-top: 4px; }
+mark { background: var(--hl); color: inherit; border-radius: 3px; padding: 0 1px; }
+mark.cur { background: #ffc400; color: #000; }
+.empty { color: var(--muted); text-align: center; padding: 40px; }
+
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #fff; color: #000; padding: 10px 18px; border-radius: 999px; font-weight: 600; opacity: 0; transition: .25s; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; display: inline-block; animation: spin .7s linear infinite; vertical-align: -3px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+kbd { font-family: "JetBrains Mono", monospace; font-size: 11px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1 class="logo">YT <span>Transcript</span></h1>
+  <p class="tag">Вставь ссылку на ролик — получишь расшифровку с таймкодами, поиском и экспортом</p>
+  <form class="search" id="form">
+    <input id="url" placeholder="https://youtube.com/watch?v=…" autocomplete="off" autofocus>
+    <button type="button" class="btn" id="paste" title="Вставить из буфера">📋</button>
+    <button class="btn primary" id="go">Достать</button>
+  </form>
+</header>
+<div class="error" id="err"></div>
+<p class="hint" id="hint" style="text-align:center">Работает с обычными видео, Shorts и youtu.be. Нужны субтитры у ролика (ручные или автоматические).</p>
+
+<main class="main">
+  <aside class="side">
+    <div class="player"><div id="yt"></div></div>
+
+    <div class="card">
+      <div class="selects">
+        <div><label class="lbl">Дорожка</label><select id="track"></select></div>
+        <div><label class="lbl">Перевести на</label><select id="tr"></select></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="sWords">—</b><small>слов</small></div>
+        <div class="stat"><b id="sDur">—</b><small>длина видео</small></div>
+        <div class="stat"><b id="sRead">—</b><small>читать</small></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="lbl">Экспорт</label>
+      <div class="row">
+        <button class="btn small" id="copy">📋 Копировать</button>
+        <button class="btn small" data-dl="txt">TXT</button>
+        <button class="btn small" data-dl="md">Markdown</button>
+        <button class="btn small" data-dl="srt">SRT</button>
+        <button class="btn small" data-dl="json">JSON</button>
+      </div>
+      <p class="hint" style="margin-bottom:0">Экспорт учитывает режим: «Абзацы» и «Таймкоды» тоже попадут в TXT/MD. <kbd>/</kbd> — поиск, <kbd>Enter</kbd> — к следующему совпадению.</p>
+    </div>
+  </aside>
+
+  <section class="tpanel">
+    <div class="toolbar">
+      <div class="find">🔍<input id="q" placeholder="Поиск по тексту"><small id="qc"></small></div>
+      <div class="seg" id="mode">
+        <button data-m="seg" class="on">Строки</button>
+        <button data-m="para">Абзацы</button>
+      </div>
+      <label class="toggle"><input type="checkbox" id="showTs" checked> Таймкоды</label>
+      <label class="toggle"><input type="checkbox" id="follow" checked> Следить</label>
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const state = { vid: null, snippets: [], blocks: [], mode: 'seg', meta: null, langs: null, player: null, activeIdx: -1, matches: [], matchPos: -1 };
+
+/* ---------- utils ---------- */
+const fmt = (t, srt = false) => {
+  t = Math.max(0, t);
+  const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = Math.floor(t % 60), ms = Math.round((t % 1) * 1000);
+  const p = n => String(n).padStart(2, '0');
+  if (srt) return `${p(h)}:${p(m)}:${p(s)},${String(ms).padStart(3, '0')}`;
+  return h ? `${h}:${p(m)}:${p(s)}` : `${m}:${p(s)}`;
+};
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const toast = msg => { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 1600); };
+const showErr = msg => { const e = $('#err'); e.textContent = msg; e.style.display = msg ? 'block' : 'none'; };
+
+async function api(path, params) {
+  const r = await fetch(path + '?' + new URLSearchParams(params));
+  const j = await r.json().catch(() => ({ error: 'Сервер вернул что-то странное' }));
+  if (!r.ok) throw new Error(j.error || 'Ошибка ' + r.status);
+  return j;
+}
+
+/* ---------- paragraphs: склеиваем строки в осмысленные блоки ---------- */
+function buildParagraphs(snips) {
+  const out = []; let cur = null;
+  for (const s of snips) {
+    if (!cur) cur = { start: s.start, end: s.start + s.dur, text: s.text };
+    else cur.text += ' ' + s.text;
+    cur.end = s.start + s.dur;
+    const len = cur.end - cur.start;
+    const endsSentence = /[.!?…]["»)]?$/.test(s.text);
+    if ((len > 25 && endsSentence) || len > 60) { out.push(cur); cur = null; }
+  }
+  if (cur) out.push(cur);
+  // автосубтитры приходят без пунктуации — хоть первую букву поднимем
+  return out.map(b => ({ ...b, dur: b.end - b.start, text: b.text.replace(/\s+/g, ' ').replace(/^./, c => c.toUpperCase()) }));
+}
+
+/* ---------- render ---------- */
+function render() {
+  const list = $('#list');
+  state.blocks = state.mode === 'para' ? buildParagraphs(state.snippets) : state.snippets;
+  list.className = 'list' + (state.mode === 'para' ? ' para' : '') + ($('#showTs').checked ? '' : ' no-ts');
+  if (!state.blocks.length) { list.innerHTML = '<div class="empty">Пусто 🤷</div>'; return; }
+  const q = $('#q').value.trim();
+  const re = q ? new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi') : null;
+  list.innerHTML = state.blocks.map((b, i) => {
+    let t = esc(b.text);
+    if (re) t = t.replace(re, m => `<mark>${m}</mark>`);
+    return `<div class="item" data-i="${i}"><span class="ts">${fmt(b.start)}</span><span>${t}</span></div>`;
+  }).join('');
+  state.activeIdx = -1;
+  state.matches = [...list.querySelectorAll('mark')];
+  state.matchPos = -1;
+  $('#qc').textContent = q ? `${state.matches.length} совп.` : '';
+}
+
+function updateStats() {
+  const words = state.snippets.reduce((n, s) => n + s.text.split(/\s+/).filter(Boolean).length, 0);
+  const last = state.snippets.at(-1);
+  $('#sWords').textContent = words.toLocaleString('ru');
+  $('#sDur').textContent = last ? fmt(last.start + last.dur) : '—';
+  $('#sRead').textContent = Math.max(1, Math.round(words / 220)) + ' мин';
+}
+
+/* ---------- loading ---------- */
+async function load(e) {
+  e?.preventDefault();
+  const url = $('#url').value.trim();
+  if (!url) return;
+  showErr('');
+  const go = $('#go'); go.disabled = true; go.innerHTML = '<span class="spinner"></span>';
+  try {
+    const langs = await api('/api/languages', { url });
+    state.langs = langs;
+    fillSelects(langs);
+    await loadTranscript();
+    document.body.classList.add('has-data');
+    $('#hint').style.display = 'none';
+    mountPlayer(langs.videoId);
+    history.replaceState(null, '', '?v=' + langs.videoId);
+  } catch (err) {
+    showErr(err.message);
+  } finally {
+    go.disabled = false; go.textContent = 'Достать';
+  }
+}
+
+function fillSelects({ tracks, translations }) {
+  $('#track').innerHTML = tracks.map((t, i) =>
+    `<option value="${i}">${esc(t.name)}${t.auto ? ' · авто' : ''}</option>`).join('');
+  $('#tr').innerHTML = '<option value="">— оригинал —</option>' +
+    translations.map(t => `<option value="${t.code}">${esc(t.name)}</option>`).join('');
+  // по умолчанию: ручные ru → ручные en → первая
+  const pick = tracks.findIndex(t => !t.auto && t.code.startsWith('ru'));
+  const pick2 = tracks.findIndex(t => !t.auto && t.code.startsWith('en'));
+  $('#track').value = String(pick >= 0 ? pick : pick2 >= 0 ? pick2 : 0);
+}
+
+async function loadTranscript() {
+  const t = state.langs.tracks[+$('#track').value];
+  const params = { url: state.langs.videoId, lang: t.code, auto: t.auto ? 1 : 0 };
+  const tr = $('#tr').value; if (tr) params.translate = tr;
+  $('#list').innerHTML = '<div class="empty"><span class="spinner"></span></div>';
+  const data = await api('/api/transcript', params);
+  state.vid = data.videoId; state.meta = data; state.snippets = data.snippets;
+  updateStats(); render();
+}
+
+for (const id of ['#track', '#tr']) $(id).addEventListener('change', () => loadTranscript().catch(e => toast(e.message)));
+
+/* ---------- player ---------- */
+let ytReady = new Promise(r => window.onYouTubeIframeAPIReady = r);
+const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s);
+
+async function mountPlayer(id) {
+  await ytReady;
+  if (state.player) { state.player.loadVideoById(id); state.player.pauseVideo?.(); return; }
+  state.player = new YT.Player('yt', { videoId: id, playerVars: { rel: 0, modestbranding: 1 } });
+}
+
+setInterval(() => {
+  const p = state.player; if (!p?.getCurrentTime || !state.blocks.length) return;
+  const t = p.getCurrentTime();
+  // бинпоиск по началу блока
+  let lo = 0, hi = state.blocks.length - 1, idx = -1;
+  while (lo <= hi) { const mid = (lo + hi) >> 1; if (state.blocks[mid].start <= t) { idx = mid; lo = mid + 1; } else hi = mid - 1; }
+  if (idx === state.activeIdx) return;
+  $('#list .item.active')?.classList.remove('active');
+  const el = $(`#list .item[data-i="${idx}"]`);
+  if (el) {
+    el.classList.add('active');
+    if ($('#follow').checked && p.getPlayerState?.() === 1) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+  state.activeIdx = idx;
+}, 250);
+
+$('#list').addEventListener('click', e => {
+  const it = e.target.closest('.item'); if (!it || !state.player?.seekTo) return;
+  if (getSelection().toString()) return; // не мешаем выделять текст
+  state.player.seekTo(state.blocks[+it.dataset.i].start, true);
+  state.player.playVideo();
+});
+
+/* ---------- search ---------- */
+let qT;
+$('#q').addEventListener('input', () => { clearTimeout(qT); qT = setTimeout(render, 120); });
+$('#q').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || !state.matches.length) return;
+  e.preventDefault();
+  state.matches[state.matchPos]?.classList.remove('cur');
+  state.matchPos = (state.matchPos + (e.shiftKey ? -1 : 1) + state.matches.length) % state.matches.length;
+  const m = state.matches[state.matchPos];
+  m.classList.add('cur'); m.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  $('#qc').textContent = `${state.matchPos + 1} / ${state.matches.length}`;
+});
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.body.classList.contains('has-data')) { e.preventDefault(); $('#q').focus(); }
+});
+
+/* ---------- view toggles ---------- */
+$('#mode').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  $('#mode .on').classList.remove('on'); b.classList.add('on');
+  state.mode = b.dataset.m; render();
+});
+$('#showTs').addEventListener('change', render);
+
+/* ---------- export ---------- */
+function asText(withTs = $('#showTs').checked) {
+  const sep = state.mode === 'para' ? '\n\n' : '\n';
+  return state.blocks.map(b => (withTs ? `[${fmt(b.start)}] ` : '') + b.text).join(sep);
+}
+function asMarkdown() {
+  const link = t => `https://youtu.be/${state.vid}?t=${Math.floor(t)}`;
+  const head = `# Транскрипт\n\nВидео: https://youtu.be/${state.vid}  \nЯзык: ${state.meta.language}${state.meta.auto ? ' (авто)' : ''}\n\n---\n\n`;
+  return head + state.blocks.map(b => ($('#showTs').checked ? `[\`${fmt(b.start)}\`](${link(b.start)}) ` : '') + b.text).join(state.mode === 'para' ? '\n\n' : '  \n');
+}
+function asSrt() {
+  return state.snippets.map((s, i) => `${i + 1}\n${fmt(s.start, true)} --> ${fmt(s.start + s.dur, true)}\n${s.text}\n`).join('\n');
+}
+function download(name, content, type = 'text/plain') {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type: type + ';charset=utf-8' }));
+  a.download = name; a.click(); URL.revokeObjectURL(a.href);
+}
+document.querySelectorAll('[data-dl]').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.dl, base = `transcript_${state.vid}`;
+  if (k === 'txt') download(base + '.txt', asText());
+  if (k === 'md') download(base + '.md', asMarkdown(), 'text/markdown');
+  if (k === 'srt') download(base + '.srt', asSrt());
+  if (k === 'json') download(base + '.json', JSON.stringify(state.meta, null, 2), 'application/json');
+  toast('Скачано ✓');
+}));
+$('#copy').addEventListener('click', async () => { await navigator.clipboard.writeText(asText()); toast('Скопировано ✓'); });
+
+/* ---------- input ---------- */
+$('#form').addEventListener('submit', load);
+$('#paste').addEventListener('click', async () => {
+  try { $('#url').value = await navigator.clipboard.readText(); load(); } catch { toast('Нет доступа к буферу'); }
+});
+$('#url').addEventListener('paste', () => setTimeout(load, 0));
+
+// ?v=ID в адресе — сразу грузим (удобно для закладок)
+const v = new URLSearchParams(location.search).get('v');
+if (v) { $('#url').value = v; load(); }
+</script>
+</body>
+</html>
